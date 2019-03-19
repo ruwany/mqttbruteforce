@@ -11,22 +11,22 @@ import java.util.Map;
 import java.util.Random;
 
 public class MqttTest {
+
     public static void main(String[] args) {
 
         Random rand = new Random();
 
         int threadCount = 100;
 
-        for(int i=0; i<threadCount; i++){
-            Map params = new HashMap();
+        for (int i = 0; i < threadCount; i++) {
+            Map<String, String> params = new HashMap<>();
             int randomNumber = rand.nextInt(1000);
-            params.put("deviceID", "device_"+i);
-            params.put("clientID", randomNumber);
+            params.put("deviceID", "device_" + i);
+            params.put("clientID", String.valueOf(randomNumber));
 
             Runnable threadedPublisher = new MultiThreadedPublisher(params);
             new Thread(threadedPublisher).start();
         }
-
 
     }
 }
@@ -36,42 +36,41 @@ class MultiThreadedPublisher implements Runnable {
 
     Map params;
 
-    public MultiThreadedPublisher(Map params){
+    public MultiThreadedPublisher(Map params) {
         this.params = params;
     }
 
     public void run() {
 
-        System.out.println ("Thread " + Thread.currentThread().getId() + " is running");
+        System.out.println("Thread " + Thread.currentThread().getId() + " is running");
 
-        String topic        = "/carbon.super/SC920/"+params.get("deviceID")+"/events";
-        String content      = "Message from MqttPublishSample";
-        int qos             = 2;
-        String broker       = "tcp://localhost:1883";
-        String clientId     = "JavaSample" + params.get("clientID");
+        String topic = "/carbon.super/SC920/" + params.get("deviceID") + "/events"; //TODO: Use actual device IDs
+        String content = "{\"rtc\":%d,\"stc\":%d,\"ttc\":%d,\"ss\":%s,\"ct\":%d,\"ts\":%d}"; //TODO: Populate with dummy values
+        int qos = 2;
+        String broker = "tcp://localhost:1886";
+        String clientId = "JavaSample-" + params.get("clientID");
         MemoryPersistence persistence = new MemoryPersistence();
 
         try {
             MqttClient sampleClient = new MqttClient(broker, clientId, persistence);
             MqttConnectOptions connOpts = new MqttConnectOptions();
             connOpts.setCleanSession(true);
-            System.out.println("Connecting to broker: "+broker);
+            System.out.println("Connecting to broker: " + broker);
             sampleClient.connect(connOpts);
             System.out.println("Connected");
-            System.out.println("Publishing message: "+content);
+            System.out.println("Publishing message: " + content);
             MqttMessage message = new MqttMessage(content.getBytes());
             message.setQos(qos);
             sampleClient.publish(topic, message);
             System.out.println("Message published");
             sampleClient.disconnect();
             System.out.println("Disconnected");
-            System.exit(0);
-        } catch(MqttException me) {
-            System.out.println("reason "+me.getReasonCode());
-            System.out.println("msg "+me.getMessage());
-            System.out.println("loc "+me.getLocalizedMessage());
-            System.out.println("cause "+me.getCause());
-            System.out.println("excep "+me);
+        } catch (MqttException me) {
+            System.out.println("reason " + me.getReasonCode());
+            System.out.println("msg " + me.getMessage());
+            System.out.println("loc " + me.getLocalizedMessage());
+            System.out.println("cause " + me.getCause());
+            System.out.println("excep " + me);
             me.printStackTrace();
         }
     }
