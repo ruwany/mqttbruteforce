@@ -46,9 +46,9 @@ class MultiThreadedPublisher implements Runnable {
 
         String topic = "/carbon.super/SC920/" + params.get("deviceID") + "/events"; //TODO: Use actual device IDs
         String content = "{\"rtc\":%d,\"stc\":%d,\"ttc\":%d,\"ss\":%s,\"ct\":%d,\"ts\":%d}"; //TODO: Populate with dummy values
-        int qos = 2;
+        int qos = 0;
         String broker = "tcp://localhost:1886";
-        String clientId = "JavaSample-" + params.get("clientID");
+        String clientId = "test-" + params.get("clientID");
         MemoryPersistence persistence = new MemoryPersistence();
 
         try {
@@ -59,12 +59,15 @@ class MultiThreadedPublisher implements Runnable {
             sampleClient.connect(connOpts);
             System.out.println("Connected");
             System.out.println("Publishing message: " + content);
-            MqttMessage message = new MqttMessage(content.getBytes());
-            message.setQos(qos);
-            sampleClient.publish(topic, message);
-            System.out.println("Message published");
-            sampleClient.disconnect();
-            System.out.println("Disconnected");
+
+            while (true) {
+                MqttMessage message = new MqttMessage(String.format(content, generateRandomInt(), generateRandomInt(),
+                        generateRandomInt(), getRandomBoolean(), generateRandomInt(), generateRandomInt()).getBytes());
+                message.setQos(qos);
+                sampleClient.publish(topic, message);
+                System.out.println("Message published : " + message.getPayload());
+            }
+
         } catch (MqttException me) {
             System.out.println("reason " + me.getReasonCode());
             System.out.println("msg " + me.getMessage());
@@ -74,4 +77,15 @@ class MultiThreadedPublisher implements Runnable {
             me.printStackTrace();
         }
     }
+
+    int generateRandomInt(){
+        Random rand = new Random();
+        int x = rand.nextInt(1000);
+        return x;
+    }
+
+    boolean getRandomBoolean() {
+        return Math.random() < 0.5;
+    }
+
 }
