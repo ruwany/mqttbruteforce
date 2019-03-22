@@ -6,14 +6,17 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 public class MqttTest {
 
-    private static String[] deviceIds = new String[]{"2L2HE00041", "2L2HF00077", "2L2HF00009", "8DOKD01887", "2L2HH00045", "2L2HE00072",
+    private static String[] originalDevices = new String[]{"2L2HE00041", "2L2HF00077", "2L2HF00009", "8DOKD01887", "2L2HH00045", "2L2HE00072",
             "8DOHD21114", "8D0HD21183", "2L2HE00038", "8DOCM12936", "8DOHK04746", "PDOJE02788", "PDOJE01062", "PDOJE01578",
             "PDOJE01120", "PDOJE00976", "PDOJE027999", "PDOJE02758", "PDOJE02851", "PDOJE02752", "PDOJE00864",
             "PDOJE002851", "PDOJE002758", "8066771H", "test_board", "Bartac-2L1AE00254", "BARTAC-2L1HE00701",
@@ -21,21 +24,36 @@ public class MqttTest {
             "810836-overlock", "0302675-overlock", "0294643-overlock", "8066771H-overlock", "0273342-coverseam",
             "2L1WG00857", "0302776-Overlock", "8DODC11605-9000B", "MO584995-double-needle", "MO584995-doubleN",
             "2L1VK01641-bartack", "M0584995", "MO584995", "test_brother", "M852-13-overlock", "E7241531-brother-D",
-            "201296-PFAFF", "D7740448-BROTHER", "D7Z35029-BORHTER", "00:4F:22:00:75:01", "00:4F:22:00:75:02", "00:4F:22:00:75:03",
-            "00:4F:22:00:75:04"};
+            "201296-PFAFF", "D7740448-BROTHER", "D7Z35029-BORHTER"};
+
+    static volatile int count = 0;
 
     public static void main(String[] args) {
 
         Random rand = new Random();
 
-        for (int i = 0; i < deviceIds.length; i++) {
+        List<String> deviceIds = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            deviceIds.add("Test_" + i);
+        }
+
+        deviceIds.addAll(Arrays.asList(originalDevices));
+
+        count = deviceIds.size();
+
+        for (String deviceId : deviceIds) {
             Map<String, String> params = new HashMap<>();
             int randomNumber = rand.nextInt(1000);
-            params.put("deviceID", deviceIds[i]);
+            params.put("deviceID", deviceId);
             params.put("clientID", String.valueOf(randomNumber));
 
             Runnable threadedPublisher = new MultiThreadedPublisher(params);
             new Thread(threadedPublisher).start();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
     }
@@ -67,7 +85,6 @@ class MultiThreadedPublisher implements Runnable {
             System.out.println("Connecting to broker: " + broker);
             sampleClient.connect(connOpts);
             System.out.println("Connected");
-            System.out.println("Publishing message: " + content);
 
             while (true) {
                 boolean isStopped = getRandomBoolean();
@@ -75,7 +92,7 @@ class MultiThreadedPublisher implements Runnable {
                         isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : 1001, Calendar.getInstance().getTimeInMillis() / 1000).getBytes());
                 message.setQos(qos);
                 sampleClient.publish(topic, message);
-                System.out.println("Message published : " + message.toString());
+                //System.out.println("Message published : " + message.toString());
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -90,6 +107,7 @@ class MultiThreadedPublisher implements Runnable {
             System.out.println("cause " + me.getCause());
             System.out.println("excep " + me);
             me.printStackTrace();
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + --MqttTest.count);
         }
     }
 
