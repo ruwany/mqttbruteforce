@@ -30,22 +30,20 @@ public class MqttTest {
 
     public static void main(String[] args) {
 
-        Random rand = new Random();
-
         List<String> deviceIds = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 500; i++) {
             deviceIds.add("Test_" + i);
         }
 
         deviceIds.addAll(Arrays.asList(originalDevices));
 
         count = deviceIds.size();
+        int cid = 1;
 
         for (String deviceId : deviceIds) {
             Map<String, String> params = new HashMap<>();
-            int randomNumber = rand.nextInt(1000);
             params.put("deviceID", deviceId);
-            params.put("clientID", String.valueOf(randomNumber));
+            params.put("clientID", "test_client_" + cid++);
 
             Runnable threadedPublisher = new MultiThreadedPublisher(params);
             new Thread(threadedPublisher).start();
@@ -62,9 +60,9 @@ public class MqttTest {
 
 class MultiThreadedPublisher implements Runnable {
 
-    Map params;
+    private Map<String, String> params;
 
-    public MultiThreadedPublisher(Map params) {
+    public MultiThreadedPublisher(Map<String, String> params) {
         this.params = params;
     }
 
@@ -75,7 +73,7 @@ class MultiThreadedPublisher implements Runnable {
         String content = "{\"rtc\":%d,\"stc\":%d,\"ttc\":%d,\"ss\":%s,\"ct\":%d,\"ts\":%d}";
         int qos = 0;
         String broker = "tcp://localhost:1886";
-        String clientId = "test-" + params.get("clientID");
+        String clientId = params.get("clientID");
         MemoryPersistence persistence = new MemoryPersistence();
 
         try {
@@ -85,7 +83,11 @@ class MultiThreadedPublisher implements Runnable {
             System.out.println("Connecting to broker: " + broker);
             sampleClient.connect(connOpts);
             System.out.println("Connected");
-
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             while (true) {
                 boolean isStopped = getRandomBoolean();
                 MqttMessage message = new MqttMessage(String.format(content, isStopped ? 0 : generateRandomInt(), isStopped ? 0 : generateRandomInt(),
