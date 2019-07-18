@@ -16,22 +16,22 @@ import java.util.Random;
 
 public class MqttTest {
 
-    private static String[] originalDevices = new String[]{"2L2HE00041", "2L2HF00077", "2L2HF00009", "8DOKD01887", "2L2HH00045", "2L2HE00072",
-            "8DOHD21114", "8D0HD21183", "2L2HE00038", "8DOCM12936", "8DOHK04746", "PDOJE02788", "PDOJE01062", "PDOJE01578",
-            "PDOJE01120", "PDOJE00976", "PDOJE027999", "PDOJE02758", "PDOJE02851", "PDOJE02752", "PDOJE00864",
-            "PDOJE002851", "PDOJE002758", "8066771H", "test_board", "Bartac-2L1AE00254", "BARTAC-2L1HE00701",
-            "Bartack-2L1HE00684", "123456789", "4DOAH25874", "LZOD41069", "Bartac-test", "A1587663", "LZODA37493", "0298996",
-            "810836-overlock", "0302675-overlock", "0294643-overlock", "8066771H-overlock", "0273342-coverseam",
-            "2L1WG00857", "0302776-Overlock", "8DODC11605-9000B", "MO584995-double-needle", "MO584995-doubleN",
-            "2L1VK01641-bartack", "M0584995", "MO584995", "test_brother", "M852-13-overlock", "E7241531-brother-D",
-            "201296-PFAFF", "D7740448-BROTHER", "D7Z35029-BORHTER"};
+    private static String[] originalDevices = new String[]{"2L2HE00041", "2L2HF00077", "2L2HF00009", "8DOKD01887",
+            "2L2HH00045", "2L2HE00072", "8DOHD21114", "8D0HD21183", "2L2HE00038", "8DOCM12936", "8DOHK04746",
+            "PDOJE02788", "PDOJE01062", "PDOJE01578", "PDOJE01120", "PDOJE00976", "PDOJE027999", "PDOJE02758",
+            "PDOJE02851", "PDOJE02752", "PDOJE00864", "PDOJE002851", "PDOJE002758", "8066771H", "test_board",
+            "Bartac-2L1AE00254", "BARTAC-2L1HE00701", "Bartack-2L1HE00684", "123456789", "4DOAH25874", "LZOD41069",
+            "Bartac-test", "A1587663", "LZODA37493", "0298996", "810836-overlock", "0302675-overlock",
+            "0294643-overlock", "8066771H-overlock", "0273342-coverseam", "2L1WG00857", "0302776-Overlock",
+            "8DODC11605-9000B", "MO584995-double-needle", "MO584995-doubleN", "2L1VK01641-bartack", "M0584995",
+            "MO584995", "test_brother", "M852-13-overlock", "E7241531-brother-D", "201296-PFAFF"};
 
     static volatile int count = 0;
 
     public static void main(String[] args) {
 
         List<String> deviceIds = new ArrayList<>();
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < Integer.parseInt(args[0]); i++) {
             deviceIds.add("Test_" + i);
         }
 
@@ -67,12 +67,10 @@ class MultiThreadedPublisher implements Runnable {
     }
 
     public void run() {
-
-        System.out.println("Thread " + Thread.currentThread().getId() + " is running");
         String topic = "carbon.super/SC920/" + params.get("deviceID") + "/events";
         String content = "{\"rtc\":%d,\"stc\":%d,\"ttc\":%d,\"ss\":%s,\"ct\":%d,\"ts\":%d}";
         int qos = 0;
-        String broker = "tcp://localhost:1886";
+        String broker = "tcp://192.168.8.135:1886";
         String clientId = params.get("clientID");
         MemoryPersistence persistence = new MemoryPersistence();
 
@@ -80,9 +78,9 @@ class MultiThreadedPublisher implements Runnable {
             MqttClient sampleClient = new MqttClient(broker, clientId, persistence);
             MqttConnectOptions connOpts = new MqttConnectOptions();
             connOpts.setCleanSession(true);
-            System.out.println("Connecting to broker: " + broker);
+            System.out.println("Connecting to broker: " + broker + " topic: " + topic);
             sampleClient.connect(connOpts);
-            System.out.println("Connected");
+            System.out.println("Connected " + clientId);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -113,13 +111,13 @@ class MultiThreadedPublisher implements Runnable {
         }
     }
 
-    int generateRandomInt() {
+    private int generateRandomInt() {
         Random rand = new Random();
         int x = rand.nextInt(1000);
         return x;
     }
 
-    boolean getRandomBoolean() {
+    private boolean getRandomBoolean() {
         return Math.random() < 0.5;
     }
 
