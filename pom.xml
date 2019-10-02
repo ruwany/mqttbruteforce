@@ -25,11 +25,8 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <mainClass>com.entgra.mqtt.MqttTest</mainClass>
-                            <classpathPrefix>../lib/</classpathPrefix>
+                            <classpathPrefix>lib/</classpathPrefix>
                         </manifest>
-                        <manifestEntries>
-                            <Class-Path>../lib/org.eclipse.paho.client.mqttv3-1.2.0.jar.jar</Class-Path>
-                        </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
