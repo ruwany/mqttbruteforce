@@ -79,6 +79,9 @@ public class MqttTest {
             device.setType(type);
             device.setToken("TOKEN12345");
             device.setSerialNo(generateRandomString(5));
+            device.setLinePlacementId("");
+            device.setLinePlacementX("");
+            device.setLinePlacementY("");
 
             if (!jSessionId.isEmpty()) {
                 enrollDevice(device);
@@ -111,9 +114,6 @@ public class MqttTest {
             // 0-62 (exclusive), random returns 0-61
             int rndCharAt = random.nextInt(DATA_FOR_RANDOM_STRING.length());
             char rndChar = DATA_FOR_RANDOM_STRING.charAt(rndCharAt);
-
-            // debug
-            System.out.format("%d\t:\t%c%n", rndCharAt, rndChar);
             sb.append(rndChar);
         }
 
@@ -122,11 +122,11 @@ public class MqttTest {
     }
 
 
-    public static DeviceConfig enrollDevice(Device device) {
+    public static void enrollDevice(Device device) {
         DeviceConfig configuration = null;
         HttpResponse response = null;
         HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/devices/enroll");
-        executor.setHeader("content-type", "application/json");
+//        executor.setHeader("content-type", "application/json");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
 
@@ -144,28 +144,12 @@ public class MqttTest {
 
             if (response.getStatusLine().getStatusCode() == 200) {
                 System.out.println("Device Successfully Enrolled to FP : " + device.getMacAddress());
-                BufferedReader rd = null;
-                try {
-                    rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                    StringBuilder result = new StringBuilder();
-                    String line;
-                    while ((line = rd.readLine()) != null) {
-                        result.append(line);
-                    }
-
-                    configuration = new Gson().fromJson(result.toString(), DeviceConfig.class);
-
-                } catch (IOException e) {
-                    System.out.println("Error while printing converting devices of group API output to Object");
-                }
-
             } else {
                 System.out.println("Device Enrollment to Dashboard error : " + response.getStatusLine().getStatusCode());
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return configuration;
     }
 
 

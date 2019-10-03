@@ -20,6 +20,33 @@ public class Device {
     private String model;
     private String machineCategory;
     private String serialNo;
+    private String linePlacementId;
+    private String linePlacementX;
+    private String linePlacementY;
+
+    public String getLinePlacementId() {
+        return linePlacementId;
+    }
+
+    public void setLinePlacementId(String linePlacementId) {
+        this.linePlacementId = linePlacementId;
+    }
+
+    public String getLinePlacementX() {
+        return linePlacementX;
+    }
+
+    public void setLinePlacementX(String linePlacementX) {
+        this.linePlacementX = linePlacementX;
+    }
+
+    public String getLinePlacementY() {
+        return linePlacementY;
+    }
+
+    public void setLinePlacementY(String linePlacementY) {
+        this.linePlacementY = linePlacementY;
+    }
 
     public String getManufacturer() {
         return manufacturer;
