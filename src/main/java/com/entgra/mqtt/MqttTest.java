@@ -125,7 +125,7 @@ public class MqttTest {
     public static void enrollDevice(Device device) {
         DeviceConfig configuration = null;
         HttpResponse response = null;
-        HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/devices/enroll");
+        HttpPost executor = new HttpPost("https://" + ip + ":9443/dashboard/api/devices/enroll");
 //        executor.setHeader("content-type", "application/json");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
