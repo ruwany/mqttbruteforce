@@ -45,7 +45,7 @@ public class MqttTest {
     private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
     private static final String NUMBER = "0123456789";
-
+    private static final String TOKEN = "TOKEN12345";
 
     private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
     private static SecureRandom random = new SecureRandom();
@@ -65,32 +65,30 @@ public class MqttTest {
             jSessionId = args[3];
         }
 
-
-        DeviceConfiguration deviceConfiguration = null;
+        DeviceConfiguration deviceConfiguration;
         for (String macId : macIds) {
 
-            Device device = new Device();
-            device.setMacAddress(macId);
-            device.setFwVersion("v1.0.0");
-            device.setFloorId("1");
-            device.setMachineCategory("Category 1");
-            device.setManufacturer("Brother");
-            device.setModel("BK-123");
-            device.setType(type);
-            device.setToken("TOKEN12345");
-            device.setSerialNo(generateRandomString(5));
-            device.setLinePlacementId("");
-            device.setLinePlacementX("");
-            device.setLinePlacementY("");
-
             if (!jSessionId.isEmpty()) {
+                Device device = new Device();
+                device.setDeviceName(macId);
+                device.setDeviceIdentifier(macId.replace(":", "-"));
+                device.setMacAddress(macId);
+                device.setFwVersion("v1.0.0");
+                device.setFloorId("1");
+                device.setMachineCategory("Category 1");
+                device.setManufacturer("Brother");
+                device.setModel("BK-123");
+                device.setType(type);
+                device.setToken(TOKEN);
+                device.setSerialNo(generateRandomString(5));
+                device.setLinePlacementId("");
+                device.setLinePlacementX("");
+                device.setLinePlacementY("");
                 enrollDevice(device);
             }
 
-            deviceConfiguration = getDeviceConfig(device);
-
-//            deviceConfiguration = new DeviceConfiguration(); //TODO: Get this from config endpoint per device
-            if(deviceConfiguration != null) {
+            deviceConfiguration = getDeviceConfig(macId);
+            if (deviceConfiguration != null) {
                 Runnable threadedPublisher = new MultiThreadedPublisher(deviceConfiguration);
                 new Thread(threadedPublisher).start();
                 try {
@@ -98,6 +96,8 @@ public class MqttTest {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            } else {
+                System.out.println(">>>>>> Configurations are not available for device with MAC: " + macId);
             }
         }
 
@@ -123,10 +123,8 @@ public class MqttTest {
 
 
     public static void enrollDevice(Device device) {
-        DeviceConfig configuration = null;
-        HttpResponse response = null;
+        HttpResponse response;
         HttpPost executor = new HttpPost("https://" + ip + ":9443/dashboard/api/devices/enroll");
-//        executor.setHeader("content-type", "application/json");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
 
@@ -153,13 +151,13 @@ public class MqttTest {
     }
 
 
-    public static DeviceConfiguration getDeviceConfig(Device device) {
+    public static DeviceConfiguration getDeviceConfig(String mac) {
         DeviceConfiguration configuration = null;
-        HttpResponse response = null;
-        HttpGet executor = new HttpGet("https://" +ip
-                                       + ":9443/api/device-mgt-config/v1.0/configurations?properties=macAddress%3D" + encodeValue(device.getMacAddress()));
+        HttpResponse response;
+        HttpGet executor = new HttpGet("https://" + ip
+                + ":9443/api/device-mgt-config/v1.0/configurations?properties=macAddress%3D" + encodeValue(mac));
         executor.setHeader("content-type", "application/x-www-form-urlencoded");
-        executor.setHeader("token", device.getToken());
+        executor.setHeader("token", TOKEN);
 
 
         CloseableHttpClient client = getHTTPClient();
@@ -167,8 +165,8 @@ public class MqttTest {
             response = client.execute(executor);
 
             if (response.getStatusLine().getStatusCode() == 200) {
-                System.out.println("Successfully retrieved configurations from IoT Core for : " + device.getMacAddress());
-                BufferedReader rd = null;
+                System.out.println("Successfully retrieved configurations from IoT Core for : " + mac);
+                BufferedReader rd;
                 try {
                     rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
                     StringBuilder result = new StringBuilder();

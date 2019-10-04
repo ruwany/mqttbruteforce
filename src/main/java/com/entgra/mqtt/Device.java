@@ -10,7 +10,8 @@
 package com.entgra.mqtt;
 
 public class Device {
-
+    private String deviceIdentifier;
+    private String deviceName;
     private String macAddress;
     private String type;
     private String floorId;
@@ -23,6 +24,22 @@ public class Device {
     private String linePlacementId;
     private String linePlacementX;
     private String linePlacementY;
+
+    public String getDeviceIdentifier() {
+        return deviceIdentifier;
+    }
+
+    public void setDeviceIdentifier(String deviceIdentifier) {
+        this.deviceIdentifier = deviceIdentifier;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
 
     public String getLinePlacementId() {
         return linePlacementId;
