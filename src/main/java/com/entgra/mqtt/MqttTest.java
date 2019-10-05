@@ -174,7 +174,7 @@ public class MqttTest {
                     while ((line = rd.readLine()) != null) {
                         result.append(line);
                     }
-
+                    System.out.println(result.toString());
                     configuration = new Gson().fromJson(result.toString(), DeviceConfiguration.class);
 
                 } catch (IOException e) {
@@ -240,7 +240,7 @@ class MultiThreadedPublisher implements Runnable {
 
     public void run() {
         String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
-        String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"timestamp\":%d}";
+        String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"timestamp\":%d,\"ts\":%d}";
         int qos = 0;
         String broker = "tcp://" + MqttTest.ip + ":1886";
         String clientId = "fpd/" + deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() +
@@ -262,7 +262,8 @@ class MultiThreadedPublisher implements Runnable {
             while (true) {
                 boolean isStopped = getRandomBoolean();
                 MqttMessage message = new MqttMessage(String.format(content, isStopped ? 0 : generateRandomInt(), isStopped ? 0 : generateRandomInt(),
-                        isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : 1001, Calendar.getInstance().getTimeInMillis() / 1000).getBytes());
+                        isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : 1001,
+                        Calendar.getInstance().getTimeInMillis() / 1000, Calendar.getInstance().getTimeInMillis() / 1000).getBytes());
                 message.setQos(qos);
                 sampleClient.publish(topic, message);
                 //System.out.println("Message published : " + message.toString());
