@@ -81,6 +81,7 @@ public class MqttTest {
                 device.setType(type);
                 device.setToken(TOKEN);
                 device.setSerialNo(generateRandomString(5));
+                device.setLineId(Integer.parseInt(args[3]));
                 device.setLinePlacementId("");
                 device.setLinePlacementX("");
                 device.setLinePlacementY("");

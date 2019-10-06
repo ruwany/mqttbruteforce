@@ -24,6 +24,7 @@ public class Device {
     private String linePlacementId;
     private String linePlacementX;
     private String linePlacementY;
+    private int lineId;
 
     public String getDeviceIdentifier() {
         return deviceIdentifier;
@@ -135,5 +136,13 @@ public class Device {
 
     public void setFwVersion(String fwVersion) {
         this.fwVersion = fwVersion;
+    }
+
+    public int getLineId() {
+        return lineId;
+    }
+
+    public void setLineId(int lineId) {
+        this.lineId = lineId;
     }
 }
