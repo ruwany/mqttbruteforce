@@ -243,7 +243,7 @@ class MultiThreadedPublisher implements Runnable {
 
     public void run() {
         String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
-        String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"timestamp\":%d,\"ts\":%d}";
+        String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"ts\":%d}";
         int qos = 0;
         String broker = "tcp://" + MqttTest.ip + ":1886";
         String clientId = "fpd/" + deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() +
@@ -262,18 +262,36 @@ class MultiThreadedPublisher implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            int r1 = 0, r2 = 0, r3 = 0;
+            long lastPush = System.currentTimeMillis();
             while (true) {
-                boolean isStopped = getRandomBoolean();
-                MqttMessage message = new MqttMessage(String.format(content, isStopped ? 0 : generateRandomInt(), isStopped ? 0 : generateRandomInt(),
-                        isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : 1001,
-                        Calendar.getInstance().getTimeInMillis() / 1000, Calendar.getInstance().getTimeInMillis() / 1000).getBytes());
+                boolean isStopped = r1 < r2 && r2 > r3;
+                int r = generateRandomInt();
+                if (isStopped) {
+                    r = 0;
+                }
+                r1 = r2;
+                r2 = r3;
+                r3 = r;
+                long currentTs = System.currentTimeMillis();
+                MqttMessage message = new MqttMessage(String.format(content, r, isStopped ? 0 : generateRandomInt(),
+                        isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : (currentTs - lastPush),
+                        currentTs / 1000).getBytes());
+                lastPush = System.currentTimeMillis();
                 message.setQos(qos);
                 sampleClient.publish(topic, message);
                 //System.out.println("Message published : " + message.toString());
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(1000 + (isStopped ? 2000 : 0));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                }
+                if (isStopped) {
+                    currentTs = System.currentTimeMillis();
+                    message = new MqttMessage(String.format(content, 0, 0, 0, false, 1, currentTs / 1000).getBytes());
+                    lastPush = System.currentTimeMillis();
+                    message.setQos(qos);
+                    sampleClient.publish(topic, message);
                 }
             }
 
@@ -290,12 +308,7 @@ class MultiThreadedPublisher implements Runnable {
 
     private int generateRandomInt() {
         Random rand = new Random();
-        int x = rand.nextInt(1000);
-        return x;
-    }
-
-    private boolean getRandomBoolean() {
-        return Math.random() < 0.5;
+        return rand.nextInt(4000) + 1;
     }
 
 }
