@@ -53,14 +53,14 @@ public class MqttTest {
     public static void main(String[] args) {
 
         ip = args[0];
+        type = args[2];
 
         List<String> macIds = new ArrayList<>();
         for (int i = 0; i < Integer.parseInt(args[1]); i++) {
-            macIds.add("00:00:00:00:" + i);
+            macIds.add(type + "00:00:00:02:" + i);
         }
 
         count = macIds.size();
-        type = args[2];
         if (args.length > 3) {
             jSessionId = args[3];
         }
