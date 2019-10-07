@@ -31,7 +31,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Random;
 
@@ -282,7 +281,7 @@ class MultiThreadedPublisher implements Runnable {
                 sampleClient.publish(topic, message);
                 //System.out.println("Message published : " + message.toString());
                 try {
-                    Thread.sleep(1000 + (isStopped ? 2000 : 0));
+                    Thread.sleep(1000 + (isStopped ? 200 * generateRandomInt() : 0));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -308,7 +307,7 @@ class MultiThreadedPublisher implements Runnable {
 
     private int generateRandomInt() {
         Random rand = new Random();
-        return rand.nextInt(4000) + 1;
+        return rand.nextInt(100) + 1;
     }
 
 }
