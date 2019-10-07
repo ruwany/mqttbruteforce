@@ -262,23 +262,24 @@ class MultiThreadedPublisher implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            int r1 = 0, r2 = 0, r3 = 0;
+            int r1 = 1, r2 = 5, r3 = 20, r4 = 10;
             long lastPush = System.currentTimeMillis();
             while (true) {
-                boolean isStopped = r1 < r2 && r2 > r3;
+                boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && getRandomNumberInRange(0, 1) == 0;
                 int r = 0;
                 if (!isStopped) {
-                    if (r2 > r3 && r3 < 100) {
-                        r = getRandomNumberInRange(r3, 100);
-                    } else if (r2 < r3 && r3 > 1) {
-                        r = getRandomNumberInRange(1, r3);
+                    if (r2 < r3 && r3 < r4 && r4 < 100) {
+                        r = getRandomNumberInRange(1, r4 - 1);
+                    } else if (r2 > r3 && r3 > r4 && r4 > 1) {
+                        r = getRandomNumberInRange(r4 + 1, 100);
                     } else {
                         r = getRandomNumberInRange(1, 100);
                     }
                 }
                 r1 = r2;
                 r2 = r3;
-                r3 = r;
+                r3 = r4;
+                r4 = r;
                 long currentTs = System.currentTimeMillis();
                 MqttMessage message = new MqttMessage(String.format(content, r, r,
                         isStopped ? 1 : 0, isStopped, isStopped ? 1 : (currentTs - lastPush),
