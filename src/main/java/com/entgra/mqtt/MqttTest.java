@@ -266,32 +266,31 @@ class MultiThreadedPublisher implements Runnable {
             long lastPush = System.currentTimeMillis();
             while (true) {
                 boolean isStopped = r1 < r2 && r2 > r3;
-                int r = generateRandomInt();
-                if (isStopped) {
-                    r = 0;
+                int r = 0;
+                if (!isStopped) {
+                    if (r2 > r3 && r3 < 100) {
+                        r = getRandomNumberInRange(r3, 100);
+                    } else if (r2 < r3 && r3 > 1) {
+                        r = getRandomNumberInRange(1, r3);
+                    } else {
+                        r = getRandomNumberInRange(1, 100);
+                    }
                 }
                 r1 = r2;
                 r2 = r3;
                 r3 = r;
                 long currentTs = System.currentTimeMillis();
-                MqttMessage message = new MqttMessage(String.format(content, r, isStopped ? 0 : generateRandomInt(),
-                        isStopped ? 0 : generateRandomInt(), isStopped, isStopped ? 1 : (currentTs - lastPush),
+                MqttMessage message = new MqttMessage(String.format(content, r, r,
+                        isStopped ? 1 : 0, isStopped, isStopped ? 1 : (currentTs - lastPush),
                         currentTs / 1000).getBytes());
                 lastPush = System.currentTimeMillis();
                 message.setQos(qos);
                 sampleClient.publish(topic, message);
                 //System.out.println("Message published : " + message.toString());
                 try {
-                    Thread.sleep(1000 + (isStopped ? 200 * generateRandomInt() : 0));
+                    Thread.sleep(1000 + (isStopped ? getRandomNumberInRange(1000, 10000) : 0));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                }
-                if (isStopped) {
-                    currentTs = System.currentTimeMillis();
-                    message = new MqttMessage(String.format(content, 0, 0, 0, false, 1, currentTs / 1000).getBytes());
-                    lastPush = System.currentTimeMillis();
-                    message.setQos(qos);
-                    sampleClient.publish(topic, message);
                 }
             }
 
@@ -306,9 +305,13 @@ class MultiThreadedPublisher implements Runnable {
         }
     }
 
-    private int generateRandomInt() {
-        Random rand = new Random();
-        return rand.nextInt(100) + 1;
+    private static int getRandomNumberInRange(int min, int max) {
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+
+        Random r = new Random();
+        return r.nextInt((max - min) + 1) + min;
     }
 
 }
