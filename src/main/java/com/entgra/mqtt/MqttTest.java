@@ -129,6 +129,7 @@ public class MqttTest {
         HttpPost executor = new HttpPost("https://" + ip + ":9443/dashboard/api/devices/enroll");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
+        executor.setHeader("Content-Type", ContentType.APPLICATION_JSON.toString());
 
         CookieStore cookieStore = new BasicCookieStore();
         BasicClientCookie cookie = new BasicClientCookie("JSESSIONID", jSessionId);
