@@ -286,9 +286,9 @@ class RawDataPublisher implements Runnable {
                 boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && EventGenerator.getRandomNumberInRange(0, 1) == 0;
                 int r = 0;
                 if (!isStopped) {
-                    if (r2 < r3 && r3 < r4 && r4 < 100) {
+                    if (r2 < r3 && r3 < r4 && r4 < 100 && r4 > 2) {
                         r = EventGenerator.getRandomNumberInRange(1, r4 - 1);
-                    } else if (r2 > r3 && r3 > r4 && r4 > 1) {
+                    } else if (r2 > r3 && r3 > r4 && r4 > 1 && r4 < 99) {
                         r = EventGenerator.getRandomNumberInRange(r4 + 1, 100);
                     } else {
                         r = EventGenerator.getRandomNumberInRange(1, 100);
