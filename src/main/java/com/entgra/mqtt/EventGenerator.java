@@ -24,6 +24,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
@@ -34,12 +36,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class MqttTest {
+public class EventGenerator {
 
     static volatile int count = 0;
     static String ip = "";
-    static String type = "";
-    static String jSessionId = "";
+    private static String jSessionId = "";
 
     private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
@@ -52,7 +53,8 @@ public class MqttTest {
     public static void main(String[] args) {
 
         ip = args[0];
-        type = args[2];
+        String type = args[2];
+        String mode = args[3];
 
         List<String> macIds = new ArrayList<>();
         for (int i = 0; i < Integer.parseInt(args[1]); i++) {
@@ -60,8 +62,8 @@ public class MqttTest {
         }
 
         count = macIds.size();
-        if (args.length > 3) {
-            jSessionId = args[3];
+        if (args.length > 4) {
+            jSessionId = args[4];
         }
 
         DeviceConfiguration deviceConfiguration;
@@ -80,8 +82,8 @@ public class MqttTest {
                 device.setType(type);
                 device.setToken(TOKEN);
                 device.setSerialNo(generateRandomString(5));
-                if (args.length > 4) {
-                    device.setLineId(Integer.parseInt(args[4]));
+                if (args.length > 5) {
+                    device.setLineId(Integer.parseInt(args[5]));
                 }
                 device.setLinePlacementId("");
                 device.setLinePlacementX("");
@@ -91,7 +93,12 @@ public class MqttTest {
 
             deviceConfiguration = getDeviceConfig(macId);
             if (deviceConfiguration != null) {
-                Runnable threadedPublisher = new MultiThreadedPublisher(deviceConfiguration);
+                Runnable threadedPublisher;
+                if ("raw".equals(mode)) {
+                    threadedPublisher = new RawDataPublisher(deviceConfiguration);
+                } else {
+                    threadedPublisher = new SummaryDataPublisher(deviceConfiguration);
+                }
                 new Thread(threadedPublisher).start();
                 try {
                     Thread.sleep(50);
@@ -122,7 +129,6 @@ public class MqttTest {
         return sb.toString();
 
     }
-
 
     public static void enrollDevice(Device device) {
         HttpResponse response;
@@ -231,13 +237,22 @@ public class MqttTest {
         }
         return null;
     }
+
+    public static int getRandomNumberInRange(int min, int max) {
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+
+        Random r = new Random();
+        return r.nextInt((max - min) + 1) + min;
+    }
 }
 
-class MultiThreadedPublisher implements Runnable {
+class RawDataPublisher implements Runnable {
 
     private DeviceConfiguration deviceConfiguration;
 
-    public MultiThreadedPublisher(DeviceConfiguration deviceConfiguration) {
+    public RawDataPublisher(DeviceConfiguration deviceConfiguration) {
         this.deviceConfiguration = deviceConfiguration;
     }
 
@@ -245,7 +260,7 @@ class MultiThreadedPublisher implements Runnable {
         String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
         String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"ts\":%d}";
         int qos = 0;
-        String broker = "tcp://" + MqttTest.ip + ":1886";
+        String broker = "tcp://" + EventGenerator.ip + ":1886";
         String clientId = "fpd/" + deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() +
                 "/" + deviceConfiguration.getDeviceId() + "/test";
         MemoryPersistence persistence = new MemoryPersistence();
@@ -265,15 +280,15 @@ class MultiThreadedPublisher implements Runnable {
             int r1 = 1, r2 = 5, r3 = 20, r4 = 10;
             long lastPush = System.currentTimeMillis();
             while (true) {
-                boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && getRandomNumberInRange(0, 1) == 0;
+                boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && EventGenerator.getRandomNumberInRange(0, 1) == 0;
                 int r = 0;
                 if (!isStopped) {
                     if (r2 < r3 && r3 < r4 && r4 < 100) {
-                        r = getRandomNumberInRange(1, r4 - 1);
+                        r = EventGenerator.getRandomNumberInRange(1, r4 - 1);
                     } else if (r2 > r3 && r3 > r4 && r4 > 1) {
-                        r = getRandomNumberInRange(r4 + 1, 100);
+                        r = EventGenerator.getRandomNumberInRange(r4 + 1, 100);
                     } else {
-                        r = getRandomNumberInRange(1, 100);
+                        r = EventGenerator.getRandomNumberInRange(1, 100);
                     }
                 }
                 r1 = r2;
@@ -289,7 +304,7 @@ class MultiThreadedPublisher implements Runnable {
                 sampleClient.publish(topic, message);
                 //System.out.println("Message published : " + message.toString());
                 try {
-                    Thread.sleep(1000 + (isStopped ? getRandomNumberInRange(1000, 10000) : 0));
+                    Thread.sleep(1000 + (isStopped ? EventGenerator.getRandomNumberInRange(1000, 10000) : 0));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -302,17 +317,50 @@ class MultiThreadedPublisher implements Runnable {
             System.out.println("cause " + me.getCause());
             System.out.println("excep " + me);
             me.printStackTrace();
-            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + --MqttTest.count);
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + --EventGenerator.count);
         }
     }
 
-    private static int getRandomNumberInRange(int min, int max) {
-        if (min >= max) {
-            throw new IllegalArgumentException("max must be greater than min");
-        }
+}
 
-        Random r = new Random();
-        return r.nextInt((max - min) + 1) + min;
+class SummaryDataPublisher implements Runnable {
+
+    private DeviceConfiguration deviceConfiguration;
+
+    public SummaryDataPublisher(DeviceConfiguration deviceConfiguration) {
+        this.deviceConfiguration = deviceConfiguration;
+    }
+
+    public void run() {
+        final WebsocketClientEndpoint clientEndPoint;
+        try {
+            clientEndPoint = new WebsocketClientEndpoint(new URI("ws://" + EventGenerator.ip + ":9765/inputwebsocket/5min_summary_carbon.super_WS_receiver"));
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return;
+        }
+        while (true) {
+            int pieceCount = EventGenerator.getRandomNumberInRange(0, 10);
+            int utilizedTime = 0;
+            if (pieceCount != 0) {
+                utilizedTime = EventGenerator.getRandomNumberInRange(pieceCount * 10, 3600);
+            }
+            int activeTime = 3600;
+            if (utilizedTime < 3600) {
+                activeTime = EventGenerator.getRandomNumberInRange(utilizedTime, 3600);
+            }
+            // send message to websocket
+            clientEndPoint.sendMessage("{'event': {'metaData': {'deviceId': '" + deviceConfiguration.getDeviceId() +
+                    "', 'deviceType': '" + deviceConfiguration.getDeviceType() + "', 'timestamp': " +
+                    System.currentTimeMillis() / 1000 + "}, 'payloadData': {'pieceCount': "+ pieceCount
+                    +", 'activeTime': "+activeTime+", 'utilizedTime': "+utilizedTime+"}}}");
+
+            try {
+                Thread.sleep(3600);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }
