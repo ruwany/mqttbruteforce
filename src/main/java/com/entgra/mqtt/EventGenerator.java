@@ -1,6 +1,9 @@
 package com.entgra.mqtt;
 
 import com.google.gson.Gson;
+import com.neovisionaries.ws.client.WebSocket;
+import com.neovisionaries.ws.client.WebSocketAdapter;
+import com.neovisionaries.ws.client.WebSocketFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.methods.HttpGet;
@@ -332,10 +335,12 @@ class SummaryDataPublisher implements Runnable {
     }
 
     public void run() {
-        final WebsocketClientEndpoint clientEndPoint;
+        WebSocket websocket;
         try {
-            clientEndPoint = new WebsocketClientEndpoint(new URI("ws://" + EventGenerator.ip + ":9765/inputwebsocket/5min_summary_carbon.super_WS_receiver"));
-        } catch (URISyntaxException e) {
+            websocket = new WebSocketFactory()
+                    .createSocket("ws://" + EventGenerator.ip + ":9765/inputwebsocket/5min_summary_carbon.super_WS_receiver")
+                    .connect();
+        } catch (Exception e) {
             e.printStackTrace();
             return;
         }
@@ -343,20 +348,20 @@ class SummaryDataPublisher implements Runnable {
             int pieceCount = EventGenerator.getRandomNumberInRange(0, 10);
             int utilizedTime = 0;
             if (pieceCount != 0) {
-                utilizedTime = EventGenerator.getRandomNumberInRange(pieceCount * 10, 3600);
+                utilizedTime = EventGenerator.getRandomNumberInRange(pieceCount * 10, 300);
             }
-            int activeTime = 3600;
-            if (utilizedTime < 3600) {
-                activeTime = EventGenerator.getRandomNumberInRange(utilizedTime, 3600);
+            int activeTime = 300;
+            if (utilizedTime < 300) {
+                activeTime = EventGenerator.getRandomNumberInRange(utilizedTime, 300);
             }
             // send message to websocket
-            clientEndPoint.sendMessage("{'event': {'metaData': {'deviceId': '" + deviceConfiguration.getDeviceId() +
+            websocket.sendText("{'event': {'metaData': {'deviceId': '" + deviceConfiguration.getDeviceId() +
                     "', 'deviceType': '" + deviceConfiguration.getDeviceType() + "', 'timestamp': " +
                     System.currentTimeMillis() / 1000 + "}, 'payloadData': {'pieceCount': "+ pieceCount
                     +", 'activeTime': "+activeTime+", 'utilizedTime': "+utilizedTime+"}}}");
 
             try {
-                Thread.sleep(3600);
+                Thread.sleep(5 * 60 * 1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
