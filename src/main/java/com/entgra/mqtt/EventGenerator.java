@@ -24,6 +24,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -36,7 +37,10 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 public class EventGenerator {
@@ -52,6 +56,8 @@ public class EventGenerator {
 
     private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
     private static SecureRandom random = new SecureRandom();
+
+    public static final Map<String, Integer> DEVICE_PIECE_COUNT_MAP = new HashMap<>();
 
     public static void main(String[] args) {
 
@@ -98,7 +104,9 @@ public class EventGenerator {
             if (deviceConfiguration != null) {
                 Runnable threadedPublisher;
                 if ("raw".equals(mode)) {
-                    threadedPublisher = new RawDataPublisher(deviceConfiguration);
+                    String key = deviceConfiguration.getDeviceType() + "-" + deviceConfiguration.getDeviceId();
+                    DEVICE_PIECE_COUNT_MAP.put(key, 0);
+                    threadedPublisher = new RawDataPublisher(deviceConfiguration, DEVICE_PIECE_COUNT_MAP);
                 } else {
                     threadedPublisher = new SummaryDataPublisher(deviceConfiguration);
                 }
@@ -112,6 +120,21 @@ public class EventGenerator {
                 System.out.println(">>>>>> Configurations are not available for device with MAC: " + macId);
             }
         }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println(DEVICE_PIECE_COUNT_MAP);
+            Properties properties = new Properties();
+
+            for (Map.Entry<String,Integer> entry : DEVICE_PIECE_COUNT_MAP.entrySet()) {
+                properties.put(entry.getKey(), entry.getValue());
+            }
+
+            try {
+                properties.store(new FileOutputStream("test-results.properties"), null);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
 
     }
 
@@ -254,10 +277,79 @@ public class EventGenerator {
 class RawDataPublisher implements Runnable {
 
     private DeviceConfiguration deviceConfiguration;
+    private Map<String, Integer> devicePiecesMap = new HashMap<>();
 
-    public RawDataPublisher(DeviceConfiguration deviceConfiguration) {
+
+    public RawDataPublisher(DeviceConfiguration deviceConfiguration, Map<String, Integer> devicePiecesMap) {
         this.deviceConfiguration = deviceConfiguration;
+        this.devicePiecesMap = devicePiecesMap;
     }
+
+//    public void run() {
+//        String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
+//        String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"ts\":%d}";
+//        int qos = 0;
+//        String broker = "tcp://" + EventGenerator.ip + ":1886";
+//        String clientId = "fpd/" + deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() +
+//                "/" + deviceConfiguration.getDeviceId() + "/test";
+//        MemoryPersistence persistence = new MemoryPersistence();
+//        try {
+//            MqttClient sampleClient = new MqttClient(broker, clientId, persistence);
+//            MqttConnectOptions connOpts = new MqttConnectOptions();
+//            connOpts.setUserName(deviceConfiguration.getAccessToken());
+//            connOpts.setCleanSession(true);
+//            System.out.println("Connecting to broker: " + broker + " topic: " + topic);
+//            sampleClient.connect(connOpts);
+//            System.out.println("Connected " + clientId);
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//            int r1 = 1, r2 = 5, r3 = 20, r4 = 10;
+//            long lastPush = System.currentTimeMillis();
+//            while (true) {
+//                boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && EventGenerator.getRandomNumberInRange(0, 1) == 0;
+//                int r = 0;
+//                if (!isStopped) {
+//                    if (r2 < r3 && r3 < r4 && r4 < 100 && r4 > 2) {
+//                        r = EventGenerator.getRandomNumberInRange(1, r4 - 1);
+//                    } else if (r2 > r3 && r3 > r4 && r4 > 1 && r4 < 99) {
+//                        r = EventGenerator.getRandomNumberInRange(r4 + 1, 100);
+//                    } else {
+//                        r = EventGenerator.getRandomNumberInRange(1, 100);
+//                    }
+//                }
+//                r1 = r2;
+//                r2 = r3;
+//                r3 = r4;
+//                r4 = r;
+//                long currentTs = System.currentTimeMillis();
+//                MqttMessage message = new MqttMessage(String.format(content, r, r,
+//                        isStopped ? 1 : 0, isStopped, isStopped ? 1 : (currentTs - lastPush),
+//                        currentTs / 1000).getBytes());
+//                lastPush = System.currentTimeMillis();
+//                message.setQos(qos);
+//                sampleClient.publish(topic, message);
+//                //System.out.println("Message published : " + message.toString());
+//                try {
+//                    Thread.sleep(1000 + (isStopped ? EventGenerator.getRandomNumberInRange(1000, 10000) : 0));
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//
+//        } catch (MqttException me) {
+//            System.out.println("reason " + me.getReasonCode());
+//            System.out.println("msg " + me.getMessage());
+//            System.out.println("loc " + me.getLocalizedMessage());
+//            System.out.println("cause " + me.getCause());
+//            System.out.println("excep " + me);
+//            me.printStackTrace();
+//            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + --EventGenerator.count);
+//        }
+//    }
+
 
     public void run() {
         String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
@@ -265,8 +357,9 @@ class RawDataPublisher implements Runnable {
         int qos = 0;
         String broker = "tcp://" + EventGenerator.ip + ":1886";
         String clientId = "fpd/" + deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() +
-                "/" + deviceConfiguration.getDeviceId() + "/test";
+                          "/" + deviceConfiguration.getDeviceId() + "/test";
         MemoryPersistence persistence = new MemoryPersistence();
+        String key = deviceConfiguration.getDeviceType() + "-" + deviceConfiguration.getDeviceId();
         try {
             MqttClient sampleClient = new MqttClient(broker, clientId, persistence);
             MqttConnectOptions connOpts = new MqttConnectOptions();
@@ -280,37 +373,27 @@ class RawDataPublisher implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            int r1 = 1, r2 = 5, r3 = 20, r4 = 10;
+
             long lastPush = System.currentTimeMillis();
             while (true) {
-                boolean isStopped = r1 < r2 && r2 < r3 && r3 > r4 && EventGenerator.getRandomNumberInRange(0, 1) == 0;
-                int r = 0;
-                if (!isStopped) {
-                    if (r2 < r3 && r3 < r4 && r4 < 100 && r4 > 2) {
-                        r = EventGenerator.getRandomNumberInRange(1, r4 - 1);
-                    } else if (r2 > r3 && r3 > r4 && r4 > 1 && r4 < 99) {
-                        r = EventGenerator.getRandomNumberInRange(r4 + 1, 100);
-                    } else {
-                        r = EventGenerator.getRandomNumberInRange(1, 100);
+                int[] arr = generate5SecondSequence();
+                for(int val : arr){
+                    boolean isStopped = val > 0 && EventGenerator.getRandomNumberInRange(0, 1) == 0;
+                    long currentTs = System.currentTimeMillis();
+                    MqttMessage message = new MqttMessage(String.format(content, val, val,
+                                                                        isStopped ? 1 : 0, isStopped, isStopped ? 1 : (currentTs - lastPush),
+                                                                        currentTs / 1000).getBytes());
+                    lastPush = System.currentTimeMillis();
+                    message.setQos(qos);
+                    sampleClient.publish(topic, message);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
+
                 }
-                r1 = r2;
-                r2 = r3;
-                r3 = r4;
-                r4 = r;
-                long currentTs = System.currentTimeMillis();
-                MqttMessage message = new MqttMessage(String.format(content, r, r,
-                        isStopped ? 1 : 0, isStopped, isStopped ? 1 : (currentTs - lastPush),
-                        currentTs / 1000).getBytes());
-                lastPush = System.currentTimeMillis();
-                message.setQos(qos);
-                sampleClient.publish(topic, message);
-                //System.out.println("Message published : " + message.toString());
-                try {
-                    Thread.sleep(1000 + (isStopped ? EventGenerator.getRandomNumberInRange(1000, 10000) : 0));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                devicePiecesMap.put(key, devicePiecesMap.get(key) + 1);
             }
 
         } catch (MqttException me) {
@@ -322,6 +405,71 @@ class RawDataPublisher implements Runnable {
             me.printStackTrace();
             System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + --EventGenerator.count);
         }
+    }
+
+    private static int[] generate5SecondSequence(){
+        int[] arr = sort(generateSequence(3, 35));
+
+        int[] paddedArr = introducePadding(arr, 5);
+
+        return paddedArr;
+    }
+
+    private static int[] generateSequence(int count, int finalSum)
+    {
+        Random r = new Random();
+        int numbers[] = new int[count];
+        int sum = 0;
+        for (int i = 0; i < count - 1; i++)
+        {
+            numbers[i] = r.nextInt((finalSum - sum) / 3) + 1;
+            sum += numbers[i];
+        }
+        numbers[count - 1] = finalSum - sum;
+
+        return numbers;
+    }
+
+    private static int[] sort(int[] arr){
+        int[] sorted = arr.clone();
+        final int center = (arr.length / 2) + (arr.length % 2) - 1;
+        int max = 0;
+
+        int index = 0;
+        int maxIndex = 0;
+        for(int i : arr){
+            if(max < i){
+                max = i;
+                maxIndex = index;
+            }
+            index++;
+        }
+        if(sorted[center]!=max){
+            int temp = sorted[center];
+            sorted[center] = max;
+            sorted[maxIndex] = temp;
+        }
+        return sorted;
+    }
+
+    private static int[] introducePadding(int[] sequence, int paddedSequenceSize){
+        if(paddedSequenceSize < sequence.length)
+            return null;
+        int padding;
+        int diff = paddedSequenceSize - sequence.length;
+        int paddedSequence[] = new int[paddedSequenceSize];
+
+        int mod = paddedSequenceSize % sequence.length;
+        if(mod % 2 > 0){
+            padding = (diff - 1) / 2;
+        } else {
+            padding = diff / 2;
+        }
+
+        for (int i = 0; i < sequence.length ; i ++){
+            paddedSequence[i + padding] = sequence[i];
+        }
+        return paddedSequence;
     }
 
 }
