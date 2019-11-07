@@ -2,7 +2,6 @@ package com.entgra.mqtt;
 
 import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocket;
-import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.CookieStore;
@@ -27,8 +26,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
@@ -67,6 +64,7 @@ public class EventGenerator {
         count = macIds.size();
         if (args.length > 4) {
             jSessionId = args[4];
+            createDeviceType(type);
         }
 
         DeviceConfiguration deviceConfiguration;
@@ -78,7 +76,7 @@ public class EventGenerator {
                 device.setDeviceIdentifier(macId.replace(":", "-"));
                 device.setMacAddress(macId);
                 device.setFwVersion("v1.0.0");
-                device.setFloorId("1");
+                device.setFloorId(1);
                 device.setMachineCategory("Category 1");
                 device.setManufacturer("Brother");
                 device.setModel("BK-123");
@@ -86,11 +84,8 @@ public class EventGenerator {
                 device.setToken(TOKEN);
                 device.setSerialNo(generateRandomString(5));
                 if (args.length > 5) {
-                    device.setLineId(Integer.parseInt(args[5]));
+                    device.setGroupId(Integer.parseInt(args[5]));
                 }
-                device.setLinePlacementId("");
-                device.setLinePlacementX("");
-                device.setLinePlacementY("");
                 enrollDevice(device);
             }
 
@@ -115,6 +110,43 @@ public class EventGenerator {
 
     }
 
+    private static void createDeviceType(String type) {
+        HttpResponse response;
+        HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/device-types/create");
+        String typeJson = "{\"name\":\"" + type +
+                "\",\"deviceTypeMetaDefinition\":{\"properties\":[\"macAddress\",\"fwVersion\",\"floorId\",\"token\"," +
+                "\"manufacturer\",\"model\",\"machineCategory\",\"serialNo\",\"placementId\",\"placementX\",\"placementY\"]," +
+                "\"pushNotificationConfig\":{\"type\":\"MQTT\",\"scheduled\":true},\"description\":\"Test " + type +
+                "\",\"features\":[{\"id\":0,\"code\":\"upgrade_firmware\",\"name\":\"Upgrade Firmware\"," +
+                "\"description\":\"Update Device Firmware\",\"deviceType\":\"" + type + "\"}]}," +
+                "\"propertyMappings\":[{\"name\":\"rotations\",\"type\":\"INT\"},{\"name\":\"stitches\",\"type\":\"INT\"}," +
+                "{\"name\":\"trims\",\"type\":\"INT\"},{\"name\":\"state\",\"type\":\"BOOL\"},{\"name\":\"cycle\",\"type\":\"INT\"}]}";
+
+        executor.setEntity(new StringEntity(typeJson, ContentType.APPLICATION_JSON));
+        executor.setHeader("Content-Type", ContentType.APPLICATION_JSON.toString());
+
+        CookieStore cookieStore = new BasicCookieStore();
+        BasicClientCookie cookie = new BasicClientCookie("JSESSIONID", jSessionId);
+
+        cookie.setDomain(ip);
+        cookie.setPath("/dashboard");
+
+        cookieStore.addCookie(cookie);
+
+        CloseableHttpClient client = getHTTPClient(cookieStore);
+        try {
+            response = client.execute(executor);
+
+            if (response.getStatusLine().getStatusCode() == 201) {
+                System.out.println("Device type created");
+            } else {
+                System.out.println("Device type creation fail. Status: " + response.getStatusLine().getStatusCode());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static String generateRandomString(int length) {
         if (length < 1) {
             throw new IllegalArgumentException();
@@ -135,7 +167,7 @@ public class EventGenerator {
 
     public static void enrollDevice(Device device) {
         HttpResponse response;
-        HttpPost executor = new HttpPost("https://" + ip + ":9443/dashboard/api/devices/enroll");
+        HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/devices/enroll");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
         executor.setHeader("Content-Type", ContentType.APPLICATION_JSON.toString());
@@ -202,6 +234,42 @@ public class EventGenerator {
         return configuration;
     }
 
+    public static DeviceRef getDeviceRef(String tenantDomain, String deviceType, String deviceId) {
+        DeviceRef deviceRef = null;
+        HttpResponse response;
+        HttpGet executor = new HttpGet("http://" + ip
+                + ":8080/dashboard/api/devices/" + tenantDomain + "/" + deviceType + "/" + deviceId);
+        executor.setHeader("content-type", "application/json");
+
+        CloseableHttpClient client = getHTTPClient();
+        try {
+            response = client.execute(executor);
+
+            if (response.getStatusLine().getStatusCode() == 200) {
+                System.out.println("Successfully retrieved device ref");
+                BufferedReader rd;
+                try {
+                    rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+                    StringBuilder result = new StringBuilder();
+                    String line;
+                    while ((line = rd.readLine()) != null) {
+                        result.append(line);
+                    }
+                    System.out.println(result.toString());
+                    deviceRef = new Gson().fromJson(result.toString(), DeviceRef.class);
+
+                } catch (IOException e) {
+                    System.out.println("Error while printing converting devices of group API output to Object");
+                }
+
+            } else {
+                System.out.println("Device Config retrieval error : " + response.getStatusLine().getStatusCode());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return deviceRef;
+    }
 
     private static String encodeValue(String value) {
         try {
@@ -345,25 +413,34 @@ class SummaryDataPublisher implements Runnable {
             return;
         }
         while (true) {
-            int pieceCount = EventGenerator.getRandomNumberInRange(0, 10);
-            int utilizedTime = 0;
-            if (pieceCount != 0) {
-                utilizedTime = EventGenerator.getRandomNumberInRange(pieceCount * 10, 300);
+            DeviceRef deviceRef = EventGenerator.getDeviceRef(deviceConfiguration.getTenantDomain(),
+                    deviceConfiguration.getDeviceType(), deviceConfiguration.getDeviceId());
+            if (!"Yard".equals(deviceRef.getStyleName()) && !"Maintenance".equals(deviceRef.getStyleName())) {
+                int pieceCount = EventGenerator.getRandomNumberInRange(0, 10);
+                int utilizedTime = 0;
+                if (pieceCount != 0) {
+                    utilizedTime = EventGenerator.getRandomNumberInRange(pieceCount * 10, 300);
+                }
+                int activeTime = 300;
+                if (utilizedTime < 300) {
+                    activeTime = EventGenerator.getRandomNumberInRange(utilizedTime, 300);
+                }
+                // send message to websocket
+                String event = "{'event': {'metaData': {'tenantDomain': '" + deviceConfiguration.getTenantDomain() +
+                        "', 'deviceId': '" + deviceConfiguration.getDeviceId() + "', 'deviceType': '" +
+                        deviceConfiguration.getDeviceType() + "', 'timestamp': " + System.currentTimeMillis() / 1000 +
+                        "}, 'payloadData': {'pieceCount': " + pieceCount + ", 'styleId': " + deviceRef.getStyleId() +
+                        ", 'placementId': " + deviceRef.getPlacementId() + ", 'activeTime': " + activeTime +
+                        ", 'utilizedTime': " + utilizedTime + "}}}";
+                websocket.sendText(event);
+                System.out.println("Published event: " + event);
             }
-            int activeTime = 300;
-            if (utilizedTime < 300) {
-                activeTime = EventGenerator.getRandomNumberInRange(utilizedTime, 300);
-            }
-            // send message to websocket
-            websocket.sendText("{'event': {'metaData': {'deviceId': '" + deviceConfiguration.getDeviceId() +
-                    "', 'deviceType': '" + deviceConfiguration.getDeviceType() + "', 'timestamp': " +
-                    System.currentTimeMillis() / 1000 + "}, 'payloadData': {'pieceCount': "+ pieceCount
-                    +", 'activeTime': "+activeTime+", 'utilizedTime': "+utilizedTime+"}}}");
-
             try {
                 Thread.sleep(5 * 60 * 1000);
             } catch (InterruptedException e) {
+                websocket.sendClose();
                 e.printStackTrace();
+                break;
             }
         }
     }

@@ -14,17 +14,17 @@ public class Device {
     private String deviceName;
     private String macAddress;
     private String type;
-    private String floorId;
+    private int floorId;
     private String token;
     private String fwVersion;
     private String manufacturer;
     private String model;
     private String machineCategory;
     private String serialNo;
-    private String linePlacementId;
-    private String linePlacementX;
-    private String linePlacementY;
-    private int lineId;
+    private int placementId;
+    private int placementX;
+    private int placementY;
+    private int groupId;
 
     public String getDeviceIdentifier() {
         return deviceIdentifier;
@@ -42,28 +42,28 @@ public class Device {
         this.deviceName = deviceName;
     }
 
-    public String getLinePlacementId() {
-        return linePlacementId;
+    public int getPlacementId() {
+        return placementId;
     }
 
-    public void setLinePlacementId(String linePlacementId) {
-        this.linePlacementId = linePlacementId;
+    public void setPlacementId(int placementId) {
+        this.placementId = placementId;
     }
 
-    public String getLinePlacementX() {
-        return linePlacementX;
+    public int getPlacementX() {
+        return placementX;
     }
 
-    public void setLinePlacementX(String linePlacementX) {
-        this.linePlacementX = linePlacementX;
+    public void setPlacementX(int placementX) {
+        this.placementX = placementX;
     }
 
-    public String getLinePlacementY() {
-        return linePlacementY;
+    public int getPlacementY() {
+        return placementY;
     }
 
-    public void setLinePlacementY(String linePlacementY) {
-        this.linePlacementY = linePlacementY;
+    public void setPlacementY(int placementY) {
+        this.placementY = placementY;
     }
 
     public String getManufacturer() {
@@ -114,11 +114,11 @@ public class Device {
         this.type = type;
     }
 
-    public String getFloorId() {
+    public int getFloorId() {
         return floorId;
     }
 
-    public void setFloorId(String floorId) {
+    public void setFloorId(int floorId) {
         this.floorId = floorId;
     }
 
@@ -138,11 +138,11 @@ public class Device {
         this.fwVersion = fwVersion;
     }
 
-    public int getLineId() {
-        return lineId;
+    public int getGroupId() {
+        return groupId;
     }
 
-    public void setLineId(int lineId) {
-        this.lineId = lineId;
+    public void setGroupId(int groupId) {
+        this.groupId = groupId;
     }
 }
