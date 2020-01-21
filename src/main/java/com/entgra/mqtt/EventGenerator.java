@@ -112,7 +112,7 @@ public class EventGenerator {
 
     private static void createDeviceType(String type) {
         HttpResponse response;
-        HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/device-types/create");
+        HttpPost executor = new HttpPost("http://" + ip + ":9763/dashboard/api/device-types/create");
         String typeJson = "{\"name\":\"" + type +
                 "\",\"deviceTypeMetaDefinition\":{\"properties\":[\"macAddress\",\"fwVersion\",\"floorId\",\"token\"," +
                 "\"manufacturer\",\"model\",\"machineCategory\",\"serialNo\",\"placementId\",\"placementX\",\"placementY\"]," +
@@ -167,7 +167,7 @@ public class EventGenerator {
 
     public static void enrollDevice(Device device) {
         HttpResponse response;
-        HttpPost executor = new HttpPost("http://" + ip + ":8080/dashboard/api/devices/enroll");
+        HttpPost executor = new HttpPost("http://" + ip + ":9763/dashboard/api/devices/enroll");
 
         executor.setEntity(new StringEntity(new Gson().toJson(device), ContentType.APPLICATION_JSON));
         executor.setHeader("Content-Type", ContentType.APPLICATION_JSON.toString());
@@ -238,7 +238,7 @@ public class EventGenerator {
         DeviceRef deviceRef = null;
         HttpResponse response;
         HttpGet executor = new HttpGet("http://" + ip
-                + ":8080/dashboard/api/devices/" + tenantDomain + "/" + deviceType + "/" + deviceId);
+                + ":9763/dashboard/api/devices/" + tenantDomain + "/" + deviceType + "/" + deviceId);
         executor.setHeader("content-type", "application/json");
 
         CloseableHttpClient client = getHTTPClient();
@@ -328,7 +328,7 @@ class RawDataPublisher implements Runnable {
     }
 
     public void run() {
-        String topic = "carbon.super/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
+        String topic = deviceConfiguration.getTenantDomain() + "/" + deviceConfiguration.getDeviceType() + "/" + deviceConfiguration.getDeviceId() + "/events";
         String content = "{\"rotations\":%d,\"stitches\":%d,\"trims\":%d,\"state\":%s,\"cycle\":%d,\"ts\":%d}";
         int qos = 0;
         String broker = "tcp://" + EventGenerator.ip + ":1886";
